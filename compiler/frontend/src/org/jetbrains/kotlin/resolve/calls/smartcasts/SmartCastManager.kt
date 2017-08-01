@@ -119,7 +119,7 @@ class SmartCastManager {
                 recordExpressionType: Boolean
         ) {
             if (KotlinBuiltIns.isNullableNothing(type)) return
-            if (dataFlowValue.isStable) {
+            if (DataFlowValueFactory.isStableWrtEffects(dataFlowValue, trace.bindingContext)) {
                 val oldSmartCasts = trace[SMARTCAST, expression]
                 val newSmartCast = SingleSmartCast(call, type)
                 if (oldSmartCasts != null) {
