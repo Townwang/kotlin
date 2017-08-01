@@ -16,19 +16,40 @@
 
 package org.jetbrains.kotlin.idea.compiler
 
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.analyzer.LanguageSettingsProvider
 import org.jetbrains.kotlin.analyzer.ModuleInfo
+import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
+import org.jetbrains.kotlin.config.AnalysisFlag
+import org.jetbrains.kotlin.config.KotlinFacetSettingsProvider
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.config.TargetPlatformVersion
+import org.jetbrains.kotlin.idea.caches.resolve.LibraryInfo
 import org.jetbrains.kotlin.idea.caches.resolve.ModuleSourceInfo
 import org.jetbrains.kotlin.idea.project.getLanguageVersionSettings
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.project.targetPlatform
 
 object IDELanguageSettingsProvider : LanguageSettingsProvider {
-    override fun getLanguageVersionSettings(moduleInfo: ModuleInfo, project: Project): LanguageVersionSettings {
-        return (moduleInfo as? ModuleSourceInfo)?.module?.languageVersionSettings ?: project.getLanguageVersionSettings()
+    override fun getLanguageVersionSettings(moduleInfo: ModuleInfo, project: Project): LanguageVersionSettings =
+            when (moduleInfo) {
+                is ModuleSourceInfo -> moduleInfo.module.languageVersionSettings
+                is LibraryInfo -> project.getLanguageVersionSettings(extraAnalysisFlags = getExtraAnalysisFlags(project))
+                else -> project.getLanguageVersionSettings()
+            }
+
+    private fun getExtraAnalysisFlags(project: Project): Map<AnalysisFlag<*>, Any?> {
+        val map = mutableMapOf<AnalysisFlag<*>, Any>()
+        for (module in ModuleManager.getInstance(project).modules) {
+            val settings = KotlinFacetSettingsProvider.getInstance(project).getSettings(module) ?: continue
+            val compilerArguments = settings.compilerArguments as? K2JVMCompilerArguments ?: continue
+            compilerArguments.updateWithJsr305Flag(map)
+            if (map.isNotEmpty()) {
+                break
+            }
+        }
+        return map
     }
 
     override fun getTargetPlatform(moduleInfo: ModuleInfo): TargetPlatformVersion {

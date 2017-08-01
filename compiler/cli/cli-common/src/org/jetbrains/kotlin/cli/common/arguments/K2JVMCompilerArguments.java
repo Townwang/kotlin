@@ -170,12 +170,16 @@ public class K2JVMCompilerArguments extends CommonCompilerArguments {
     @NotNull
     public Map<AnalysisFlag<?>, Object> configureAnalysisFlags() {
         Map<AnalysisFlag<?>, Object> result = super.configureAnalysisFlags();
+        updateWithJsr305Flag(result);
+        return result;
+    }
+
+    public void updateWithJsr305Flag(Map<AnalysisFlag<?>, Object> analysisFlags) {
         for (Jsr305State state : Jsr305State.values()) {
             if (state.getDescription().equals(jsr305GlobalReportLevel)) {
-                result.put(AnalysisFlag.getLoadJsr305Annotations(), state);
+                analysisFlags.put(AnalysisFlag.getLoadJsr305Annotations(), state);
                 break;
             }
         }
-        return result;
     }
 }
